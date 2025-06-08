@@ -32,4 +32,4 @@ with tab2:
     if st.button("Update table"):
         st.markdown(analysis.update_data(date, weight, food_score, exercise))
 with tab3:
-    st.markdown('## Forecast')
+    st.markdown(analysis.estimate_gain_weight())
