@@ -2,10 +2,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
 from sklearn.preprocessing import MinMaxScaler
+import json
 
 class wana:
-    def __init__(self, file):
+    def __init__(self, file, param='forecast_model/model_parameters_reg.json'):
         self.file = file 
+        self.param = param
         df = pd.read_csv(file)
         df.index = pd.to_datetime(df['date'])
         self.raw_df = df
@@ -60,6 +62,19 @@ class wana:
         df = df.sort_index()
         df.to_csv(self.file, index=False)
         return "Table Updated"
+    
+    def estimate_gain_weight(self):
+        with open(self.param, 'r') as f:
+            param = json.load(f)
+        last_week_food = self.df['food'].tail(7).mean()
+        last_week_exer = self.df['exer'].tail(7).sum()
+        last_week_food_n = (last_week_food - param['food_min']) / param['food_range']
+        last_week_exer_n = (last_week_exer - param['exer_min']) / param['exer_range']
+        weighted_average = param['w1']*last_week_exer_n + (1-param['w1'])*last_week_food_n
+        weight_gain_expected = param['intercept']+param['slope']*weighted_average
+        weight_gain_bad = param['intercept']+param['slope']*0.1
+        weight_gain_good = param['intercept']+param['slope']*0.9
+        return f'If we continue what we are doing: {weight_gain_expected}\nIf we just give up: {weight_gain_bad}\nIf we put some effort: {weight_gain_good}'
 
 
         
