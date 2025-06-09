@@ -5,7 +5,7 @@ from sklearn.preprocessing import MinMaxScaler
 import json
 
 class wana:
-    def __init__(self, file, param='forecast_model/model_parameters_reg.json'):
+    def __init__(self, file, param='forecast_model/model_parameters_reg_prod.json'):
         self.file = file 
         self.param = param
         df = pd.read_csv(file)
@@ -74,7 +74,41 @@ class wana:
         weight_gain_expected = param['intercept']+param['slope']*weighted_average
         weight_gain_bad = param['intercept']+param['slope']*0.1
         weight_gain_good = param['intercept']+param['slope']*0.9
-        return f'If we continue what we are doing: {weight_gain_expected}\nIf we just give up: {weight_gain_bad}\nIf we put some effort: {weight_gain_good}'
+        return weight_gain_expected, weight_gain_bad, weight_gain_good
+    
+    def forecast_graph(self, num_weeks):
+        weight_gain_expected, weight_gain_bad, weight_gain_good = self.estimate_gain_weight()
+        last_date = self.df.index[-1]
+        future_date = last_date + pd.Timedelta(weeks=num_weeks)
+        last_weight = self.df['weight_lbs_avg_7d'].iloc[-1]
+        future_weight_expected = last_weight + (weight_gain_expected * num_weeks)
+        future_weight_bad = last_weight + (weight_gain_bad * num_weeks)
+        future_weight_good = last_weight + (weight_gain_good * num_weeks)
+        interpolation_df = pd.DataFrame({
+                'date': [last_date, future_date],
+                'weight_gain_expected': [last_weight, future_weight_expected],
+                'weight_gain_bad': [last_weight, future_weight_bad],
+                'weight_gain_good': [last_weight, future_weight_good]
+            }).set_index('date')
+        interpolated_df = interpolation_df.resample('D').interpolate()
+        plt.figure(figsize=(10, 6))
+        plt.plot(self.df.index, self.df['weight_lbs_avg_7d'], label='Weight lbs Avg (7d)', color='blue')
+        plt.plot(interpolated_df.index, interpolated_df['weight_gain_expected'], label='Expected Weight Gain', linestyle='--', color='green')
+        plt.plot(interpolated_df.index, interpolated_df['weight_gain_bad'], label='Weight Gain (Bad Food and Exercise)', linestyle='--', color='red')
+        plt.plot(interpolated_df.index, interpolated_df['weight_gain_good'], label='Weight Gain (Good Food and Exercise)', linestyle='--', color='orange')
+        plt.text(future_date, future_weight_expected, f'{future_weight_expected:.2f}', color='green', fontsize=10, ha='left')
+        plt.text(future_date, future_weight_bad, f'{future_weight_bad:.2f}', color='red', fontsize=10, ha='left')
+        plt.text(future_date, future_weight_good, f'{future_weight_good:.2f}', color='orange', fontsize=10, ha='left')
+        plt.xlabel('Date')
+        plt.ylabel('Weight (lbs)')
+        plt.title('Weight Analysis with Interpolation')
+        plt.legend()
+        plt.grid(True)
+        return plt
+
+        
+
+
 
 
         
