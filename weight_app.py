@@ -32,4 +32,7 @@ with tab2:
     if st.button("Update table"):
         st.markdown(analysis.update_data(date, weight, food_score, exercise))
 with tab3:
-    st.markdown(analysis.estimate_gain_weight())
+    weeks = st.number_input("Number of songs", min_value=1, max_value=10, value=2, step=1, key="week_input")
+    plot = analysis.forecast_graph(weeks)
+    st.pyplot(plot)
+
