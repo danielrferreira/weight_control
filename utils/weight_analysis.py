@@ -11,7 +11,7 @@ class wana:
         df = pd.read_csv(file)
         df.index = pd.to_datetime(df['date'])
         self.raw_df = df
-        df = df.drop(['date', 'avg_7d'], axis=1)
+        df = df.drop(['date'], axis=1)
         df = df.sort_index()
         for col in ['weight_lbs', 'food', 'exer']:
             df[f'{col}_avg_7d'] = df[col].rolling(window=7).mean()
@@ -56,7 +56,7 @@ class wana:
     def update_data(self, date, weight, food, exercise):
         if pd.to_datetime(date) in self.raw_df.index:
             return f"Date {date} already exists in the data. No update performed."
-        temp = pd.DataFrame({'date': [date], 'weight_lbs':[weight], 'exer':[exercise], 'food': [food], 'avg_7d':[pd.NA] })
+        temp = pd.DataFrame({'date': [date], 'weight_lbs':[weight], 'exer':[exercise], 'food': [food]})
         temp.index = pd.to_datetime(temp['date'])
         df = pd.concat([self.raw_df, temp])
         df = df.sort_index()
