@@ -5,9 +5,10 @@ from sklearn.preprocessing import MinMaxScaler
 import json
 
 class wana:
-    def __init__(self, file, param='forecast_model/model_parameters_reg_prod.json'):
+    def __init__(self, file, measurement='lbs', param='forecast_model/model_parameters_reg_prod.json'):
         self.file = file 
         self.param = param
+        self.measurement = measurement
         df = pd.read_csv(file)
         df.index = pd.to_datetime(df['date'])
         self.raw_df = df
@@ -20,6 +21,9 @@ class wana:
             df[col] = scaler.fit_transform(df[col].values.reshape(-1, 1))
         df['food_exercise_avg_7d'] = (df['food_avg_7d'] + df['exer_avg_7d']) / 2
         self.df = df
+    def change_measurement(self):
+        self.measurement = 'kgs'
+        return
     
     def find_missing(self):
         today = pd.Timestamp('today')
@@ -29,9 +33,9 @@ class wana:
 
     def plot(self):
         fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, figsize=(12, 15), sharex=True)
-        ax1.plot(self.df.index, self.df['weight_lbs'], label='Weight (lbs)', color='blue', linewidth=2)
+        ax1.plot(self.df.index, self.df['weight_lbs'], label=f'Weight ({self.measurement})', color='blue', linewidth=2)
         ax1.plot(self.df.index, self.df['weight_lbs_avg_7d'], label='Weight (7-day Avg)', color='red', linestyle='--', linewidth=2)
-        ax1.set_ylabel('Weight (lbs)', fontsize=12)
+        ax1.set_ylabel(f'Weight ({self.measurement})', fontsize=12)
         ax1.set_title('Weight Trends', fontsize=14)
         
         ax2.plot(self.df.index, self.df['food_exercise_avg_7d'], label='Food and Exercise (7-day Avg)', color='green', linewidth=2)
@@ -92,7 +96,7 @@ class wana:
             }).set_index('date')
         interpolated_df = interpolation_df.resample('D').interpolate()
         plt.figure(figsize=(10, 6))
-        plt.plot(self.df.index, self.df['weight_lbs_avg_7d'], label='Weight lbs Avg (7d)', color='blue')
+        plt.plot(self.df.index, self.df['weight_lbs_avg_7d'], label=f'Weight {self.measurement} Avg (7d)', color='blue')
         plt.plot(interpolated_df.index, interpolated_df['weight_gain_expected'], label='Expected Weight Gain', linestyle='--', color='green')
         plt.plot(interpolated_df.index, interpolated_df['weight_gain_bad'], label='Weight Gain (Bad Food and Exercise)', linestyle='--', color='red')
         plt.plot(interpolated_df.index, interpolated_df['weight_gain_good'], label='Weight Gain (Good Food and Exercise)', linestyle='--', color='orange')
@@ -100,7 +104,7 @@ class wana:
         plt.text(future_date, future_weight_bad, f'{future_weight_bad:.2f}', color='red', fontsize=10, ha='left')
         plt.text(future_date, future_weight_good, f'{future_weight_good:.2f}', color='orange', fontsize=10, ha='left')
         plt.xlabel('Date')
-        plt.ylabel('Weight (lbs)')
+        plt.ylabel(f'Weight ({self.measurement})')
         plt.title('Weight Analysis with Interpolation')
         plt.legend()
         plt.grid(True)

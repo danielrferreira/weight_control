@@ -19,6 +19,9 @@ with tab1:
         st.markdown('Missing Dates:')
         for m in missing:
             st.markdown(m.date())
+    if st.button('Kgs'):
+        analysis.change_measurement()
+        st.session_state.clear()
     fig = analysis.plot()
     st.pyplot(fig)
     if st.button('Refresh'):
