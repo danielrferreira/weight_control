@@ -21,8 +21,9 @@ class wana:
             df[col] = scaler.fit_transform(df[col].values.reshape(-1, 1))
         df['food_exercise_avg_7d'] = (df['food_avg_7d'] + df['exer_avg_7d']) / 2
         self.df = df
-    def change_measurement(self):
-        self.measurement = 'kgs'
+
+    def change_measurement(self, measurement):
+        self.measurement = measurement
         return
     
     def find_missing(self):
