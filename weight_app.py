@@ -22,16 +22,16 @@ with tab1:
 
     col1, col2, col3 = st.columns([0.1, 0.1, 1])
     with col1:
-        if st.button('Kgs'):
+        if st.button('Kgs', key='tab1_kgs_button'):
             analysis.change_measurement('kgs')
             st.session_state.clear()
 
     with col2:
-        if st.button('Lbs'):
+        if st.button('Lbs', key='tab1_lbs_button'):
             analysis.change_measurement('lbs')
             st.session_state.clear()
     with col3:
-        if st.button('Refresh'):
+        if st.button('Refresh', key='tab1_refresh_button'):
             st.session_state.clear()
 
     fig = analysis.plot()
@@ -46,6 +46,19 @@ with tab2:
     if st.button("Update table"):
         st.markdown(analysis.update_data(date, weight, food_score, exercise))
 with tab3:
+    col1, col2, col3 = st.columns([0.1, 0.1, 1])
+    with col1:
+        if st.button('Kgs', key='tab3_kgs_button'):
+            analysis.change_measurement('kgs')
+            st.session_state.clear()
+
+    with col2:
+        if st.button('Lbs', key='tab3_lbs_button'):
+            analysis.change_measurement('lbs')
+            st.session_state.clear()
+    with col3:
+        if st.button('Refresh', key='tab3_refresh_button'):
+            st.session_state.clear()
     weeks = st.number_input("Number of weeks to forecast", min_value=1, max_value=10, value=2, step=1, key="week_input")
     plot = analysis.forecast_graph(weeks)
     st.pyplot(plot)
