@@ -19,10 +19,24 @@ with tab1:
         st.markdown('Missing Dates:')
         for m in missing:
             st.markdown(m.date())
+
+    col1, col2, col3 = st.columns([0.1, 0.1, 1])
+    with col1:
+        if st.button('Kgs'):
+            analysis.change_measurement('kgs')
+            st.session_state.clear()
+
+    with col2:
+        if st.button('Lbs'):
+            analysis.change_measurement('lbs')
+            st.session_state.clear()
+    with col3:
+        if st.button('Refresh'):
+            st.session_state.clear()
+
     fig = analysis.plot()
     st.pyplot(fig)
-    if st.button('Refresh'):
-        st.session_state.clear()
+    
 with tab2:
     st.markdown('## Input Data')
     date = st.date_input("Select Date", value=None)
