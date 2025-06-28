@@ -17,8 +17,10 @@ class wana:
         df = df.sort_index()
         if self.measurement=='kgs':
             self.weight_col = 'weight_kgs'
+            self.weight_goal = 70
         else:
             self.weight_col = 'weight_lbs'
+            self.weight_goal = 154.324
         for col in ['weight_lbs', 'weight_kgs', 'food', 'exer']:
             df[f'{col}_avg_7d'] = df[col].rolling(window=7).mean()
         scaler = MinMaxScaler()
@@ -31,6 +33,7 @@ class wana:
     def change_measurement(self, measurement):
         self.measurement = measurement
         self.weight_col = 'weight_kgs' if measurement == 'kgs' else 'weight_lbs'
+        self.weight_goal = 70 if measurement == 'kgs' else 154.324
         return
     
     def find_missing(self):
@@ -43,6 +46,7 @@ class wana:
         fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, figsize=(12, 15), sharex=True)
         ax1.plot(self.df.index, self.df[self.weight_col], label=f'Weight ({self.measurement})', color='blue', linewidth=2)
         ax1.plot(self.df.index, self.df[f'{self.weight_col}_avg_7d'], label='Weight (7-day Avg)', color='red', linestyle='--', linewidth=2)
+        ax1.axhline(y=self.weight_goal, color='gray', linestyle=':')
         ax1.set_ylabel(f'Weight ({self.measurement})', fontsize=12)
         ax1.set_title('Weight Trends', fontsize=14)
         
@@ -112,6 +116,7 @@ class wana:
         plt.plot(interpolated_df.index, interpolated_df['weight_gain_expected'], label='Expected Weight Gain', linestyle='--', color='green')
         plt.plot(interpolated_df.index, interpolated_df['weight_gain_bad'], label='Weight Gain (Bad Food and Exercise)', linestyle='--', color='red')
         plt.plot(interpolated_df.index, interpolated_df['weight_gain_good'], label='Weight Gain (Good Food and Exercise)', linestyle='--', color='orange')
+        plt.axhline(y=self.weight_goal, color='gray', linestyle=':')
         plt.text(future_date, future_weight_expected, f'{future_weight_expected:.2f}', color='green', fontsize=10, ha='left')
         plt.text(future_date, future_weight_bad, f'{future_weight_bad:.2f}', color='red', fontsize=10, ha='left')
         plt.text(future_date, future_weight_good, f'{future_weight_good:.2f}', color='orange', fontsize=10, ha='left')
