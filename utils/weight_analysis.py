@@ -33,6 +33,7 @@ class wana:
     def change_measurement(self, measurement):
         self.measurement = measurement
         self.weight_col = 'weight_kgs' if measurement == 'kgs' else 'weight_lbs'
+        self.weight_goal = 70 if measurement == 'kgs' else 154.324
         return
     
     def find_missing(self):
