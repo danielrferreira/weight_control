@@ -28,7 +28,10 @@ class wana:
             df[col] = scaler.fit_transform(df[col].values.reshape(-1, 1))
         df['food_exercise_avg_7d'] = 0.7*df['food_avg_7d'] + 0.3*df['exer_avg_7d']
         self.df = df
-
+    
+    def last_n(self, n):
+        df_n = self.df.sort_index(ascending=False).head(n)
+        return df_n
 
     def change_measurement(self, measurement):
         self.measurement = measurement
