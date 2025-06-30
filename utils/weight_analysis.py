@@ -31,7 +31,8 @@ class wana:
     
     def last_n(self, n):
         df_n = self.df.sort_index(ascending=False).head(n)
-        return df_n
+        output = df_n[[self.weight_col, 'food', 'exer', f'{self.weight_col}_avg_7d',  'food_avg_7d', 'exer_avg_7d']]
+        return output
 
     def change_measurement(self, measurement):
         self.measurement = measurement

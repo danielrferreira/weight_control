@@ -65,9 +65,24 @@ with tab3:
     st.pyplot(plot)
 
 with tab4:
-    st.markdown('Last Inputs')
+    st.markdown('## Last Inputs\nSelect how many days you want to visualize and the measurement (Kgs or Lbs)')
     n = st.number_input("How many days?", min_value=5, max_value=100, value=20, step=1, key="last_n")
-    last = analysis.last_n(n=n)
-    st.dataframe(last)
+    col1, col2 = st.columns([0.05, 0.5])
+    last = None
+    with col1:
+        if st.button('Kgs', key='tab4_kgs_button'):
+            analysis.change_measurement('kgs')
+            st.session_state.clear()
+            last = analysis.last_n(n=n)
+
+    with col2:
+        if st.button('Lbs', key='tab4_lbs_button'):
+            analysis.change_measurement('lbs')
+            st.session_state.clear()
+            last = analysis.last_n(n=n)
+    if last is not None:
+        st.dataframe(last)
+    
+    
 
 
