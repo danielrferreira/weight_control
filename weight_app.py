@@ -10,7 +10,7 @@ Welcome, here is your weekly summary:
 
 analysis = wana('data/weight.csv')
 
-tab1, tab2, tab3 = st.tabs(['Summary', 'Data Input', 'Forecast'])
+tab1, tab2, tab3, tab4  = st.tabs(['Summary', 'Data Input', 'Forecast', 'View Data'])
 
 with tab1:
     st.markdown('## Weight Evolution')
@@ -45,6 +45,7 @@ with tab2:
     exercise = st.checkbox("Did you exercise yesterday?")
     if st.button("Update table"):
         st.markdown(analysis.update_data(date, weight, food_score, exercise))
+
 with tab3:
     col1, col2, col3 = st.columns([0.1, 0.1, 1])
     with col1:
@@ -62,4 +63,26 @@ with tab3:
     weeks = st.number_input("Number of weeks to forecast", min_value=1, max_value=10, value=2, step=1, key="week_input")
     plot = analysis.forecast_graph(weeks)
     st.pyplot(plot)
+
+with tab4:
+    st.markdown('## Last Inputs\nSelect how many days you want to visualize and the measurement (Kgs or Lbs)')
+    n = st.number_input("How many days?", min_value=5, max_value=100, value=20, step=1, key="last_n")
+    col1, col2 = st.columns([0.05, 0.5])
+    last = None
+    with col1:
+        if st.button('Kgs', key='tab4_kgs_button'):
+            analysis.change_measurement('kgs')
+            st.session_state.clear()
+            last = analysis.last_n(n=n)
+
+    with col2:
+        if st.button('Lbs', key='tab4_lbs_button'):
+            analysis.change_measurement('lbs')
+            st.session_state.clear()
+            last = analysis.last_n(n=n)
+    if last is not None:
+        st.dataframe(last)
+    
+    
+
 
