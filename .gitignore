@@ -3,5 +3,5 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-# Ignore Streamlit secrets
-.streamlit/secrets.toml
+# Ignore secrets
+secrets/weight-control-465201-c619663658e4.json

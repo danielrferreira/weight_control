@@ -8,7 +8,7 @@ st.markdown("""
 This app helps users track, analyze, and forecast their weight data while providing insights and visualizations based on user inputs.
 """)
 
-analysis = wana('data/weight.csv')
+analysis = wana('1P3JHnDkMMWf_xeGBaTHdEcAoYzTMIvU4')
 
 tab1, tab2, tab3, tab4  = st.tabs(['Summary', 'Data Input', 'Forecast', 'View Data'])
 
