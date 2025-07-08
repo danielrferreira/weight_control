@@ -41,7 +41,7 @@ with tab2:
     st.markdown('## Input Data')
     col1, col2, col3, col4 = st.columns([1, 1, 1, 5])
     with col1:
-        date = st.date_input("Select Date", value=None)
+        date = st.date_input("Select Date", value = None )
     with col2:
         weight = st.number_input("Enter your weight (lbs)", min_value=0.0, step=0.2)
     with col3:

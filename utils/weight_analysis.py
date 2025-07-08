@@ -10,7 +10,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 
 service_account_file = 'secrets/weight-control-465201-c619663658e4.json'
-scopes = ['https://www.googleapis.com/auth/drive.readonly']
+scopes = ['https://www.googleapis.com/auth/drive']
 
 credentials = Credentials.from_service_account_file(service_account_file, scopes=scopes)
 drive_service = build('drive', 'v3', credentials=credentials)
