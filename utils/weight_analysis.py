@@ -51,6 +51,8 @@ class wana:
             df[col] = scaler.fit_transform(df[col].values.reshape(-1, 1))
         df['food_exercise_avg_7d'] = 0.7*df['food_avg_7d'] + 0.3*df['exer_avg_7d']
         self.df = df
+        self.today = pd.Timestamp('today')
+        self.last_weight = df['weight_lbs'].iloc[-1]
     
     def last_n(self, n):
         df_n = self.df.sort_index(ascending=False).head(n)
@@ -64,7 +66,7 @@ class wana:
         return
     
     def find_missing(self):
-        today = pd.Timestamp('today')
+        today = self.today
         full_date_range = pd.date_range(start=self.df.index.min(), end=today, freq='D')
         missing_dates = full_date_range.difference(self.df.index)
         return missing_dates

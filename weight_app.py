@@ -41,11 +41,11 @@ with tab2:
     st.markdown('## Input Data')
     col1, col2, col3, col4 = st.columns([1, 1, 1, 5])
     with col1:
-        date = st.date_input("Select Date", value = None )
+        date = st.date_input("Select Date", value=analysis.today)
     with col2:
-        weight = st.number_input("Enter your weight (lbs)", min_value=0.0, step=0.2)
+        weight = st.number_input("Enter your weight (lbs)", value=analysis.last_weight , min_value=0.0, step=0.2)
     with col3:
-        food_score = st.number_input("Enter your food score", min_value=0, step=1)
+        food_score = st.number_input("Enter your food score", value=5, min_value=0, step=1)
     exercise = st.checkbox("Did you exercise yesterday?")
     if st.button("Update table"):
         st.markdown(analysis.update_data(date, weight, food_score, exercise))
