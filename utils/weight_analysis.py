@@ -3,13 +3,36 @@ import matplotlib.pyplot as plt
 import streamlit as st
 from sklearn.preprocessing import MinMaxScaler
 import json
+import io
+
+from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
+
+service_account_file = 'secrets/weight-control-465201-c619663658e4.json'
+scopes = ['https://www.googleapis.com/auth/drive']
+
+credentials = Credentials.from_service_account_file(service_account_file, scopes=scopes)
+drive_service = build('drive', 'v3', credentials=credentials)
+
+def read_csv_from_drive(file_id):
+    request = drive_service.files().get_media(fileId=file_id)
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fh, request)
+
+    done = False
+    while not done:
+        status, done = downloader.next_chunk()
+
+    fh.seek(0)
+    return pd.read_csv(fh)
 
 class wana:
-    def __init__(self, file, measurement='lbs', param='forecast_model/model_parameters_reg_prod.json'):
-        self.file = file 
+    def __init__(self, file_id, measurement='lbs', param='forecast_model/model_parameters_reg_prod.json'):
+        self.file_id = file_id
         self.param = param
         self.measurement = measurement
-        df = pd.read_csv(file)
+        df = read_csv_from_drive(file_id)
         df.index = pd.to_datetime(df['date'])
         self.raw_df = df
         df['weight_kgs'] = df['weight_lbs'] * 0.453592
@@ -28,6 +51,8 @@ class wana:
             df[col] = scaler.fit_transform(df[col].values.reshape(-1, 1))
         df['food_exercise_avg_7d'] = 0.7*df['food_avg_7d'] + 0.3*df['exer_avg_7d']
         self.df = df
+        self.today = pd.Timestamp('today')
+        self.last_weight = df['weight_lbs'].iloc[-1]
     
     def last_n(self, n):
         df_n = self.df.sort_index(ascending=False).head(n)
@@ -41,7 +66,7 @@ class wana:
         return
     
     def find_missing(self):
-        today = pd.Timestamp('today')
+        today = self.today
         full_date_range = pd.date_range(start=self.df.index.min(), end=today, freq='D')
         missing_dates = full_date_range.difference(self.df.index)
         return missing_dates
@@ -76,11 +101,17 @@ class wana:
     def update_data(self, date, weight, food, exercise):
         if pd.to_datetime(date) in self.raw_df.index:
             return f"Date {date} already exists in the data. No update performed."
-        temp = pd.DataFrame({'date': [date], 'weight_lbs':[weight], 'exer':[exercise], 'food': [food]})
+        temp = pd.DataFrame({'date': [date], 'weight_lbs': [weight], 'exer': [exercise], 'food': [food]})
         temp.index = pd.to_datetime(temp['date'])
         df = pd.concat([self.raw_df, temp])
         df = df.sort_index()
-        df.to_csv(self.file, index=False)
+        buffer = io.StringIO()
+        df.to_csv(buffer, index=False)
+        buffer.seek(0)
+
+        media = MediaIoBaseUpload(io.BytesIO(buffer.getvalue().encode()), mimetype='text/csv')
+        drive_service.files().update(fileId=self.file_id, media_body=media).execute()
+        self.raw_df = df
         return "Table Updated"
     
     def estimate_gain_weight(self):
