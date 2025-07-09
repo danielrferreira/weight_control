@@ -9,11 +9,10 @@ from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 
-service_account_file = 'secrets/weight-control-465201-c619663658e4.json'
-scopes = ['https://www.googleapis.com/auth/drive']
+service_account_info = st.secrets["google_drive"]
 
-credentials = Credentials.from_service_account_file(service_account_file, scopes=scopes)
-drive_service = build('drive', 'v3', credentials=credentials)
+credentials = Credentials.from_service_account_info(service_account_info, scopes=["https://www.googleapis.com/auth/drive"])
+drive_service = build("drive", "v3", credentials=credentials)
 
 def read_csv_from_drive(file_id):
     request = drive_service.files().get_media(fileId=file_id)
