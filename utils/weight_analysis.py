@@ -40,9 +40,11 @@ class wana:
         if self.measurement=='kgs':
             self.weight_col = 'weight_kgs'
             self.weight_goal = 70
+            self.weight_min = df['weight_kgs'].min()
         else:
             self.weight_col = 'weight_lbs'
             self.weight_goal = 154.324
+            self.weight_min = df['weight_lbs'].min()
         for col in ['weight_lbs', 'weight_kgs', 'food', 'exer']:
             df[f'{col}_avg_7d'] = df[col].rolling(window=7).mean()
         scaler = MinMaxScaler()
@@ -75,6 +77,7 @@ class wana:
         ax1.plot(self.df.index, self.df[self.weight_col], label=f'Weight ({self.measurement})', color='blue', linewidth=2)
         ax1.plot(self.df.index, self.df[f'{self.weight_col}_avg_7d'], label='Weight (7-day Avg)', color='red', linestyle='--', linewidth=2)
         ax1.axhline(y=self.weight_goal, color='gray', linestyle=':')
+        ax1.axhline(y=self.weight_min, color='red', linestyle=':')
         ax1.set_ylabel(f'Weight ({self.measurement})', fontsize=12)
         ax1.set_title('Weight Trends', fontsize=14)
         
