@@ -64,6 +64,7 @@ class wana:
         self.measurement = measurement
         self.weight_col = 'weight_kgs' if measurement == 'kgs' else 'weight_lbs'
         self.weight_goal = 70 if measurement == 'kgs' else 154.324
+        self.weight_min = self.df['weight_kgs'].min() if measurement == 'kgs' else self.df['weight_lbs'].min()
         return
     
     def find_missing(self):
