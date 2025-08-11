@@ -11,7 +11,7 @@ from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 
 service_account_info = st.secrets["google_drive"]
 
-credentials = Credentials.from_service_account_info(service_account_info, scopes=["https://www.googleapis.com/auth/drive.file"])
+credentials = Credentials.from_service_account_info(service_account_info, scopes=["https://www.googleapis.com/auth/drive"])
 drive_service = build("drive", "v3", credentials=credentials)
 
 def read_csv_from_drive(file_id):
