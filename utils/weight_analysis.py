@@ -11,7 +11,7 @@ from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 
 service_account_info = st.secrets["google_drive"]
 
-credentials = Credentials.from_service_account_info(service_account_info, scopes=["https://www.googleapis.com/auth/drive"])
+credentials = Credentials.from_service_account_info(service_account_info, scopes=["https://www.googleapis.com/auth/drive.file"])
 drive_service = build("drive", "v3", credentials=credentials)
 
 def read_csv_from_drive(file_id):
@@ -47,6 +47,8 @@ class wana:
             self.weight_min = df['weight_lbs'].min()
         for col in ['weight_lbs', 'weight_kgs', 'food', 'exer']:
             df[f'{col}_avg_7d'] = df[col].rolling(window=7).mean()
+        for col in ['weight_lbs', 'weight_kgs', 'food', 'exer']:
+            df[f'{col}_std_21d'] = df[col].rolling(window=21).std()
         scaler = MinMaxScaler()
         for col in ['food_avg_7d','exer_avg_7d']:
             df[col] = scaler.fit_transform(df[col].values.reshape(-1, 1))
@@ -74,7 +76,7 @@ class wana:
         return missing_dates
 
     def plot(self):
-        fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, figsize=(12, 15), sharex=True)
+        fig, (ax1, ax2, ax3, ax4) = plt.subplots(nrows=4, ncols=1, figsize=(12, 18), sharex=True)
         ax1.plot(self.df.index, self.df[self.weight_col], label=f'Weight ({self.measurement})', color='blue', linewidth=2)
         ax1.plot(self.df.index, self.df[f'{self.weight_col}_avg_7d'], label='Weight (7-day Avg)', color='red', linestyle='--', linewidth=2)
         ax1.axhline(y=self.weight_goal, color='gray', linestyle=':')
@@ -92,7 +94,12 @@ class wana:
         ax3.set_ylabel('Food & Exercise (scaled)', fontsize=12)        
         ax3.set_title('Food and Exercise Trends', fontsize=14)
 
-        for ax in (ax1, ax2, ax3):
+        ax4.plot(self.df.index, self.df[f'{self.weight_col}_std_21d'], label='Std', color='green', linewidth=2)
+        ax4.set_ylabel('Weight Standard Deviation', fontsize=12)
+        ax4.legend(loc='upper left', fontsize=10)
+        ax4.set_title('Weight Standard Deviation Last 21 Days Trends', fontsize=14)
+
+        for ax in (ax1, ax2, ax3, ax4):
             ax.legend(loc='upper left', fontsize=10)
             ax.grid(alpha=0.3)
 
