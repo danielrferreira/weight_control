@@ -39,11 +39,13 @@ class wana:
         df = df.sort_index()
         if self.measurement=='kgs':
             self.weight_col = 'weight_kgs'
-            self.weight_goal = 70
+            self.weight_goal = 66
+            self.weight_goal_band = 2
             self.weight_min = df['weight_kgs'].min()
         else:
             self.weight_col = 'weight_lbs'
-            self.weight_goal = 154.324
+            self.weight_goal = 145.5
+            self.weight_goal_band = 4.41
             self.weight_min = df['weight_lbs'].min()
         for col in ['weight_lbs', 'weight_kgs', 'food', 'exer']:
             df[f'{col}_avg_7d'] = df[col].rolling(window=7).mean()
@@ -65,7 +67,8 @@ class wana:
     def change_measurement(self, measurement):
         self.measurement = measurement
         self.weight_col = 'weight_kgs' if measurement == 'kgs' else 'weight_lbs'
-        self.weight_goal = 70 if measurement == 'kgs' else 154.324
+        self.weight_goal = 66 if measurement == 'kgs' else 145.5
+        self.weight_goal_band = 2 if measurement == 'kgs' else 4.41
         self.weight_min = self.df['weight_kgs'].min() if measurement == 'kgs' else self.df['weight_lbs'].min()
         return
     
@@ -79,7 +82,8 @@ class wana:
         fig, (ax1, ax2, ax3, ax4) = plt.subplots(nrows=4, ncols=1, figsize=(12, 18), sharex=True)
         ax1.plot(self.df.index, self.df[self.weight_col], label=f'Weight ({self.measurement})', color='blue', linewidth=2)
         ax1.plot(self.df.index, self.df[f'{self.weight_col}_avg_7d'], label='Weight (7-day Avg)', color='red', linestyle='--', linewidth=2)
-        ax1.axhline(y=self.weight_goal, color='gray', linestyle=':')
+        ax1.axhline(y=(self.weight_goal-self.weight_goal_band), color='gray', linestyle=':')
+        ax1.axhline(y=(self.weight_goal+self.weight_goal_band), color='gray', linestyle=':')
         ax1.axhline(y=self.weight_min, color='red', linestyle=':')
         ax1.set_ylabel(f'Weight ({self.measurement})', fontsize=12)
         ax1.set_title('Weight Trends', fontsize=14)
