@@ -39,13 +39,13 @@ class wana:
         df = df.sort_index()
         if self.measurement=='kgs':
             self.weight_col = 'weight_kgs'
-            self.weight_goal = 66
-            self.weight_goal_band = 2
+            self.weight_goal = 67
+            self.weight_goal_band = 1
             self.weight_min = df['weight_kgs'].min()
         else:
             self.weight_col = 'weight_lbs'
-            self.weight_goal = 145.5
-            self.weight_goal_band = 4.41
+            self.weight_goal = 147.7097157
+            self.weight_goal_band = 2.2
             self.weight_min = df['weight_lbs'].min()
         for col in ['weight_lbs', 'weight_kgs', 'food', 'exer']:
             df[f'{col}_avg_7d'] = df[col].rolling(window=7).mean()
@@ -67,8 +67,8 @@ class wana:
     def change_measurement(self, measurement):
         self.measurement = measurement
         self.weight_col = 'weight_kgs' if measurement == 'kgs' else 'weight_lbs'
-        self.weight_goal = 66 if measurement == 'kgs' else 145.5
-        self.weight_goal_band = 2 if measurement == 'kgs' else 4.41
+        self.weight_goal = 67 if measurement == 'kgs' else 147.7097157
+        self.weight_goal_band = 1 if measurement == 'kgs' else 2.2
         self.weight_min = self.df['weight_kgs'].min() if measurement == 'kgs' else self.df['weight_lbs'].min()
         return
     
