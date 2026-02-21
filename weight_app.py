@@ -34,7 +34,9 @@ with tab1:
             for m in missing:
                 st.markdown(f"- {m.date()}")
     else:
-        st.success("No missing dates.")
+        col, _ = st.columns([0.17, 0.83])
+        with col:
+            st.success("No missing dates.")
 
     fig = analysis.plot()
     st.pyplot(fig)
