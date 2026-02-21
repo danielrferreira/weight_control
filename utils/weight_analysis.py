@@ -9,13 +9,31 @@ from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 
-service_account_info = st.secrets["google_drive"]
+_PALETTE = {
+    'weight':      '#4C72B0',  # steel blue    — raw weight line
+    'avg_7d':      '#DD8452',  # warm orange   — 7-day moving average
+    'goal_band':   '#C8E6C9',  # soft green    — goal band fill
+    'min_line':    '#E57373',  # muted rose    — personal minimum
+    'food':        '#55A868',  # sage green    — food avg
+    'exercise':    '#C44E52',  # muted crimson — exercise avg
+    'combined':    '#8172B2',  # violet        — food+exercise combined
+    'std':         '#64B5CD',  # sky blue      — std deviation
+    'goal_line':   '#B0BEC5',  # light slate   — goal reference lines
+    'fc_hist':     '#4C72B0',  # steel blue    — historical in forecast
+    'fc_expected': '#55A868',  # sage green    — expected forecast
+    'fc_bad':      '#C44E52',  # muted crimson — bad scenario
+    'fc_good':     '#8172B2',  # violet        — good scenario
+}
 
-credentials = Credentials.from_service_account_info(service_account_info, scopes=["https://www.googleapis.com/auth/drive"])
-drive_service = build("drive", "v3", credentials=credentials)
+@st.cache_resource
+def get_drive_service():
+    service_account_info = st.secrets["google_drive"]
+    credentials = Credentials.from_service_account_info(service_account_info, scopes=["https://www.googleapis.com/auth/drive"])
+    return build("drive", "v3", credentials=credentials)
 
+@st.cache_data(ttl=300)
 def read_csv_from_drive(file_id):
-    request = drive_service.files().get_media(fileId=file_id)
+    request = get_drive_service().files().get_media(fileId=file_id)
     fh = io.BytesIO()
     downloader = MediaIoBaseDownload(fh, request)
 
@@ -27,11 +45,11 @@ def read_csv_from_drive(file_id):
     return pd.read_csv(fh)
 
 class wana:
-    def __init__(self, file_id, measurement='lbs', param='forecast_model/model_parameters_reg_prod.json'):
+    def __init__(self, file_id, raw_df, measurement='lbs', param='forecast_model/model_parameters_reg_prod.json'):
         self.file_id = file_id
         self.param = param
         self.measurement = measurement
-        df = read_csv_from_drive(file_id)
+        df = raw_df.copy()
         df.index = pd.to_datetime(df['date'])
         self.raw_df = df
         df['weight_kgs'] = df['weight_lbs'] * 0.453592
@@ -79,38 +97,41 @@ class wana:
         return missing_dates
 
     def plot(self):
-        fig, (ax1, ax2, ax3, ax4) = plt.subplots(nrows=4, ncols=1, figsize=(12, 18), sharex=True)
-        ax1.plot(self.df.index, self.df[self.weight_col], label=f'Weight ({self.measurement})', color='blue', linewidth=2)
-        ax1.plot(self.df.index, self.df[f'{self.weight_col}_avg_7d'], label='Weight (7-day Avg)', color='red', linestyle='--', linewidth=2)
-        ax1.axhline(y=(self.weight_goal-self.weight_goal_band), color='gray', linestyle=':')
-        ax1.axhline(y=(self.weight_goal+self.weight_goal_band), color='gray', linestyle=':')
-        ax1.axhline(y=self.weight_min, color='red', linestyle=':')
-        ax1.set_ylabel(f'Weight ({self.measurement})', fontsize=12)
-        ax1.set_title('Weight Trends', fontsize=14)
-        
-        ax2.plot(self.df.index, self.df['food_exercise_avg_7d'], label='Food and Exercise (7-day Avg)', color='green', linewidth=2)
-        ax2.set_ylabel('Food & Exercise Averaged', fontsize=12)
-        ax2.legend(loc='upper left', fontsize=10)
-        ax2.set_title('Food and Exercise Average Trends', fontsize=14)
+        with plt.style.context('dark_background'):
+            fig, (ax1, ax2, ax3, ax4) = plt.subplots(nrows=4, ncols=1, figsize=(14, 20), sharex=True)
+            fig.patch.set_facecolor('#0E1117')
+            for ax in (ax1, ax2, ax3, ax4):
+                ax.set_facecolor('#1C2231')
 
-        ax3.plot(self.df.index, self.df['food_avg_7d'], label='Food (7-day Avg)', color='blue', linewidth=2)
-        ax3.plot(self.df.index, self.df['exer_avg_7d'], label='Exercise (7-day Avg)', color='green', linewidth=2)
-        ax3.set_ylabel('Food & Exercise (scaled)', fontsize=12)        
-        ax3.set_title('Food and Exercise Trends', fontsize=14)
+            ax1.plot(self.df.index, self.df[self.weight_col], label=f'Weight ({self.measurement})', color=_PALETTE['weight'], linewidth=1.5, alpha=0.6)
+            ax1.plot(self.df.index, self.df[f'{self.weight_col}_avg_7d'], label='7-day Avg', color=_PALETTE['avg_7d'], linewidth=2.5)
+            x_end = self.df.index[-1] + pd.Timedelta(weeks=2)
+            ax1.fill_between([self.df.index[0], x_end], self.weight_goal - self.weight_goal_band, self.weight_goal + self.weight_goal_band, color=_PALETTE['goal_band'], alpha=0.2, label='Goal range')
+            ax1.axhline(y=self.weight_min, color=_PALETTE['min_line'], linestyle=':', linewidth=1.5, label='Personal min')
+            ax1.set_ylabel(f'Weight ({self.measurement})', fontsize=12)
+            ax1.set_title('Weight Trends', fontsize=14, fontweight='semibold')
 
-        ax4.plot(self.df.index, self.df[f'{self.weight_col}_std_21d'], label='Std', color='green', linewidth=2)
-        ax4.set_ylabel('Weight Standard Deviation', fontsize=12)
-        ax4.legend(loc='upper left', fontsize=10)
-        ax4.set_title('Weight Standard Deviation Last 21 Days Trends', fontsize=14)
+            ax2.plot(self.df.index, self.df['food_exercise_avg_7d'], label='Food & Exercise (7-day Avg)', color=_PALETTE['combined'], linewidth=2.5)
+            ax2.set_ylabel('Food & Exercise Averaged', fontsize=12)
+            ax2.set_title('Food and Exercise Average Trends', fontsize=14, fontweight='semibold')
 
-        for ax in (ax1, ax2, ax3, ax4):
-            ax.legend(loc='upper left', fontsize=10)
-            ax.grid(alpha=0.3)
+            ax3.plot(self.df.index, self.df['food_avg_7d'], label='Food (7-day Avg)', color=_PALETTE['food'], linewidth=2.5)
+            ax3.plot(self.df.index, self.df['exer_avg_7d'], label='Exercise (7-day Avg)', color=_PALETTE['exercise'], linewidth=2.5)
+            ax3.set_ylabel('Food & Exercise (scaled)', fontsize=12)
+            ax3.set_title('Food and Exercise Trends', fontsize=14, fontweight='semibold')
 
-        plt.xlabel('Date', fontsize=12)
-        plt.tight_layout()
-        plt.show()
-        return fig
+            ax4.plot(self.df.index, self.df[f'{self.weight_col}_std_21d'], label='21-day Std Dev', color=_PALETTE['std'], linewidth=2.5)
+            ax4.set_ylabel('Weight Standard Deviation', fontsize=12)
+            ax4.set_title('Weight Volatility (21-day Std Dev)', fontsize=14, fontweight='semibold')
+
+            for ax in (ax1, ax2, ax3, ax4):
+                ax.legend(loc='upper right', fontsize=10, framealpha=0.3)
+                ax.spines[['top', 'right']].set_visible(False)
+                ax.grid(color='#2A3347', linewidth=0.8)
+
+            plt.xlabel('Date', fontsize=12)
+            plt.tight_layout()
+            return fig
     
     def update_data(self, date, weight, food, exercise):
         if pd.to_datetime(date) in self.raw_df.index:
@@ -124,7 +145,7 @@ class wana:
         buffer.seek(0)
 
         media = MediaIoBaseUpload(io.BytesIO(buffer.getvalue().encode()), mimetype='text/csv')
-        drive_service.files().update(fileId=self.file_id, media_body=media).execute()
+        get_drive_service().files().update(fileId=self.file_id, media_body=media).execute()
         self.raw_df = df
         return "Table Updated"
     
@@ -160,22 +181,28 @@ class wana:
                 'weight_gain_good': [last_weight, future_weight_good]
             }).set_index('date')
         interpolated_df = interpolation_df.resample('D').interpolate()
-        plt.figure(figsize=(10, 6))
-        plt.plot(self.df.index, self.df[f'{self.weight_col}_avg_7d'], label=f'Weight {self.measurement} Avg (7d)', color='blue')
-        plt.plot(interpolated_df.index, interpolated_df['weight_gain_expected'], label='Expected Weight Gain', linestyle='--', color='green')
-        plt.plot(interpolated_df.index, interpolated_df['weight_gain_bad'], label='Weight Gain (Bad Food and Exercise)', linestyle='--', color='red')
-        plt.plot(interpolated_df.index, interpolated_df['weight_gain_good'], label='Weight Gain (Good Food and Exercise)', linestyle='--', color='orange')
-        plt.axhline(y=(self.weight_goal-self.weight_goal_band), color='gray', linestyle=':')
-        plt.axhline(y=(self.weight_goal+self.weight_goal_band), color='gray', linestyle=':')
-        plt.text(future_date, future_weight_expected, f'{future_weight_expected:.2f}', color='green', fontsize=10, ha='left')
-        plt.text(future_date, future_weight_bad, f'{future_weight_bad:.2f}', color='red', fontsize=10, ha='left')
-        plt.text(future_date, future_weight_good, f'{future_weight_good:.2f}', color='orange', fontsize=10, ha='left')
-        plt.xlabel('Date')
-        plt.ylabel(f'Weight ({self.measurement})')
-        plt.title('Weight Analysis with Interpolation')
-        plt.legend()
-        plt.grid(True)
-        return plt
+        with plt.style.context('dark_background'):
+            fig, ax = plt.subplots(figsize=(12, 6))
+            fig.patch.set_facecolor('#0E1117')
+            ax.set_facecolor('#1C2231')
+            ax.plot(self.df.index, self.df[f'{self.weight_col}_avg_7d'], label=f'Weight {self.measurement} Avg (7d)', color=_PALETTE['fc_hist'], linewidth=2)
+            ax.plot(interpolated_df.index, interpolated_df['weight_gain_expected'], label='Expected', linestyle='--', color=_PALETTE['fc_expected'], linewidth=2)
+            ax.plot(interpolated_df.index, interpolated_df['weight_gain_bad'], label='Pessimistic', linestyle='--', color=_PALETTE['fc_bad'], linewidth=2)
+            ax.plot(interpolated_df.index, interpolated_df['weight_gain_good'], label='Optimistic', linestyle='--', color=_PALETTE['fc_good'], linewidth=2)
+            ax.fill_between(interpolated_df.index, interpolated_df['weight_gain_bad'], interpolated_df['weight_gain_good'], alpha=0.08, color=_PALETTE['fc_expected'], label='Scenario range')
+            x_end = future_date + pd.Timedelta(weeks=4)
+            ax.fill_between([self.df.index[0], x_end], self.weight_goal - self.weight_goal_band, self.weight_goal + self.weight_goal_band, color=_PALETTE['goal_band'], alpha=0.2, label='Goal range')
+            ax.set_xlim(right=x_end)
+            ax.text(future_date, future_weight_expected, f'{future_weight_expected:.2f}', color=_PALETTE['fc_expected'], fontsize=10, ha='left', fontweight='semibold')
+            ax.text(future_date, future_weight_bad, f'{future_weight_bad:.2f}', color=_PALETTE['fc_bad'], fontsize=10, ha='left', fontweight='semibold')
+            ax.text(future_date, future_weight_good, f'{future_weight_good:.2f}', color=_PALETTE['fc_good'], fontsize=10, ha='left', fontweight='semibold')
+            ax.set_xlabel('Date')
+            ax.set_ylabel(f'Weight ({self.measurement})')
+            ax.set_title('Weight Forecast', fontsize=14, fontweight='semibold')
+            ax.legend(framealpha=0.3)
+            ax.spines[['top', 'right']].set_visible(False)
+            ax.grid(color='#2A3347', linewidth=0.8)
+            return fig
 
         
 
