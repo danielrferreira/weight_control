@@ -27,27 +27,28 @@ tab1, tab2, tab3, tab4 = st.tabs(['Summary', 'Data Input', 'Forecast', 'View Dat
 with tab1:
     st.subheader('Weight Evolution')
     st.caption('Your weight trends, food & exercise averages, and volatility over time.')
-    missing = analysis.find_missing()
-    if len(missing) > 0:
-        st.warning(f"{len(missing)} missing date(s)")
-        with st.expander("Show missing dates"):
-            for m in missing:
-                st.markdown(f"- {m.date()}")
-    else:
-        col, _ = st.columns([0.17, 0.83])
-        with col:
-            st.success("No missing dates.")
-
     fig = analysis.plot()
     st.pyplot(fig)
 
-with tab2:
-    st.subheader('Input Data')
+@st.fragment
+def input_tab():
+    missing = analysis.find_missing()
+    if len(missing) > 0:
+        col, _ = st.columns([0.2, 0.8])
+        with col:
+            st.warning(f"{len(missing)} missing date(s)")
+            with st.expander("Show missing dates"):
+                for m in missing:
+                    st.markdown(f"- {m.date()}")
+    else:
+        col, _ = st.columns([0.2, 0.8])
+        with col:
+            st.success("No missing dates.")
     col1, col2, col3, col4 = st.columns([1, 1.5, 1.5, 4])
     with col1:
         date = st.date_input("Select Date", value=analysis.today, key='date_input')
     with col2:
-        weight = st.number_input("Enter your weight (lbs)", value=analysis.last_weight , min_value=0.0, step=0.2, key='weight_input')
+        weight = st.number_input("Enter your weight (lbs)", value=analysis.last_weight, min_value=0.0, step=0.2, key='weight_input')
     with col3:
         food_score = st.number_input("Enter your food score", value=5, min_value=1, step=1, key='food_input')
     exercise = st.checkbox("Did you exercise yesterday?", key='exercise_input')
@@ -64,9 +65,13 @@ with tab2:
             if result == "Table Updated":
                 st.toast("Data saved!")
                 read_csv_from_drive.clear()
-                st.rerun()
+                st.rerun(scope="app")
             else:
                 st.error(result)
+
+with tab2:
+    st.subheader('Input Data')
+    input_tab()
 
 @st.fragment
 def forecast_tab():
