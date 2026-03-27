@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log Form</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0E1117;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: #FAFAFA;
+    padding: 4px 2px 12px;
+  }
+
+  .date-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+
+  .date-display .day-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: #FAFAFA;
+    line-height: 1.2;
+  }
+
+  .date-display .full-date {
+    font-size: 13px;
+    color: #888;
+  }
+
+  .change-date-btn {
+    background: #1C2231;
+    border: none;
+    color: #888;
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .change-date-btn:hover { color: #FAFAFA; }
+
+  #date-picker-wrap {
+    display: none;
+    margin-bottom: 12px;
+  }
+
+  #date-picker-wrap input[type="date"] {
+    width: 100%;
+    background: #1C2231;
+    border: 1px solid #6B9FD4;
+    color: #FAFAFA;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    color-scheme: dark;
+  }
+
+  .fields-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  @media (min-width: 480px) {
+    .fields-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  .field-card {
+    background: #1C2231;
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+
+  .field-label {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+
+  .stepper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .stepper-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    background: #0E1117;
+    border: 1px solid #333;
+    color: #FAFAFA;
+    font-size: 26px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: background 0.1s;
+    flex-shrink: 0;
+  }
+
+  .stepper-btn:active { background: #2a3344; }
+
+  .stepper-value {
+    text-align: center;
+    flex: 1;
+  }
+
+  .stepper-value .number {
+    font-size: 42px;
+    font-weight: 700;
+    color: #6B9FD4;
+    line-height: 1;
+  }
+
+  .stepper-value .hint {
+    font-size: 11px;
+    color: #555;
+    margin-top: 3px;
+  }
+
+  .exercise-card {
+    background: #1C2231;
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .pill-group { display: flex; gap: 8px; }
+
+  .pill {
+    padding: 8px 22px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background 0.1s, color 0.1s;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .pill.active   { background: #6B9FD4; color: #0E1117; border-color: #6B9FD4; }
+  .pill.inactive { background: #0E1117; color: #555; border-color: #333; }
+
+  #save-btn {
+    width: 100%;
+    background: #6B9FD4;
+    color: #0E1117;
+    border: none;
+    border-radius: 12px;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: 0.3px;
+    transition: opacity 0.15s;
+    margin-bottom: 12px;
+  }
+
+  #save-btn:active   { opacity: 0.85; }
+  #save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  #error-msg {
+    display: none;
+    background: rgba(196, 78, 82, 0.15);
+    border: 1px solid #C44E52;
+    color: #f08080;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="date-header">
+  <div class="date-display">
+    <div class="day-name" id="day-name">—</div>
+    <div class="full-date" id="full-date">—</div>
+  </div>
+  <button class="change-date-btn" onclick="toggleDatePicker()">change date</button>
+</div>
+
+<div id="date-picker-wrap">
+  <input type="date" id="date-picker" onchange="onDateChange(this.value)">
+</div>
+
+<div class="fields-grid">
+  <div class="field-card">
+    <div class="field-label" id="weight-label">Weight · lbs</div>
+    <div class="stepper">
+      <button class="stepper-btn" onclick="adjust('weight', -1)">−</button>
+      <div class="stepper-value">
+        <div class="number" id="weight-display">—</div>
+        <div class="hint" id="weight-hint">step 0.2</div>
+      </div>
+      <button class="stepper-btn" onclick="adjust('weight', 1)">+</button>
+    </div>
+  </div>
+
+  <div class="field-card">
+    <div class="field-label">Food Score</div>
+    <div class="stepper">
+      <button class="stepper-btn" onclick="adjust('food', -1)">−</button>
+      <div class="stepper-value">
+        <div class="number" id="food-display">—</div>
+        <div class="hint">1 – 10</div>
+      </div>
+      <button class="stepper-btn" onclick="adjust('food', 1)">+</button>
+    </div>
+  </div>
+</div>
+
+<div class="exercise-card">
+  <div class="field-label" style="margin-bottom:0;">Exercise</div>
+  <div class="pill-group">
+    <div class="pill active"   id="pill-yes" onclick="setExercise(true)">Yes</div>
+    <div class="pill inactive" id="pill-no"  onclick="setExercise(false)">No</div>
+  </div>
+</div>
+
+<div id="error-msg"></div>
+
+<button id="save-btn" onclick="onSave()">Save Entry</button>
+
+
+<script>
+  // ── State ────────────────────────────────────────────────────────────────
+  let weightValue   = 185.0;
+  let foodValue     = 5;
+  let exerciseValue = false;
+  let selectedDate  = todayISO();
+  let weightStep    = 0.2;
+  let unit          = "lbs";
+  let existingDates = [];
+  let initialized   = false;
+
+  // ── Streamlit raw postMessage protocol ──────────────────────────────────
+  function sendToStreamlit(type, data) {
+    window.parent.postMessage({ isStreamlitMessage: true, type, ...data }, "*");
+  }
+
+  function setComponentReady() {
+    sendToStreamlit("streamlit:componentReady", { apiVersion: 1 });
+  }
+
+  function setComponentValue(value) {
+    sendToStreamlit("streamlit:setComponentValue", { value, dataType: "json" });
+  }
+
+  function setFrameHeight() {
+    const h = document.documentElement.scrollHeight || document.body.scrollHeight;
+    sendToStreamlit("streamlit:setFrameHeight", { height: h });
+  }
+
+  // Listen for render events from Streamlit
+  window.addEventListener("message", function(event) {
+    if (event.data.type !== "streamlit:render") return;
+    const args = event.data.args || {};
+
+    if (!initialized) {
+      weightValue   = args.last_weight   ?? 185.0;
+      foodValue     = args.last_food     ?? 5;
+      exerciseValue = args.last_exercise ?? false;
+      weightStep    = args.step          ?? 0.2;
+      unit          = args.unit          ?? "lbs";
+      existingDates = args.existing_dates ?? [];
+      initialized   = true;
+
+      updateDateDisplay(selectedDate);
+      updateWeightDisplay();
+      updateFoodDisplay();
+      updateExerciseDisplay();
+      initDatePicker();
+    }
+
+    setFrameHeight();
+  });
+
+  // Signal ready on load
+  window.addEventListener("load", function() {
+    setComponentReady();
+  });
+
+  // ── Date helpers ─────────────────────────────────────────────────────────
+  function todayISO() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function formatDate(iso) {
+    const [y, m, day] = iso.split("-").map(Number);
+    const d = new Date(y, m - 1, day);
+    const dayNames   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const monthNames = ["January","February","March","April","May","June",
+                        "July","August","September","October","November","December"];
+    return { dayName: dayNames[d.getDay()], fullDate: `${monthNames[d.getMonth()]} ${day}, ${y}` };
+  }
+
+  function updateDateDisplay(iso) {
+    const { dayName, fullDate } = formatDate(iso);
+    document.getElementById("day-name").textContent  = dayName;
+    document.getElementById("full-date").textContent = fullDate;
+  }
+
+  function initDatePicker() {
+    const picker = document.getElementById("date-picker");
+    picker.value = selectedDate;
+    picker.max   = todayISO();
+  }
+
+  function toggleDatePicker() {
+    const wrap = document.getElementById("date-picker-wrap");
+    wrap.style.display = wrap.style.display === "none" ? "block" : "none";
+    setFrameHeight();
+  }
+
+  function onDateChange(val) {
+    if (!val) return;
+    selectedDate = val;
+    updateDateDisplay(val);
+    clearError();
+  }
+
+  // ── Steppers ──────────────────────────────────────────────────────────────
+  function adjust(field, dir) {
+    if (field === "weight") {
+      weightValue = Math.round((weightValue + dir * weightStep) * 1000) / 1000;
+      if (weightValue < 0.1) weightValue = 0.1;
+      updateWeightDisplay();
+    } else {
+      foodValue = Math.min(10, Math.max(1, foodValue + dir));
+      updateFoodDisplay();
+    }
+    clearError();
+  }
+
+  function updateWeightDisplay() {
+    const decimals = unit === "lbs" ? 1 : 2;
+    document.getElementById("weight-display").textContent = weightValue.toFixed(decimals);
+    document.getElementById("weight-label").textContent   = `Weight · ${unit}`;
+    document.getElementById("weight-hint").textContent    = `step ${weightStep}`;
+  }
+
+  function updateFoodDisplay() {
+    document.getElementById("food-display").textContent = foodValue;
+  }
+
+  // ── Exercise ──────────────────────────────────────────────────────────────
+  function setExercise(val) {
+    exerciseValue = val;
+    updateExerciseDisplay();
+  }
+
+  function updateExerciseDisplay() {
+    document.getElementById("pill-yes").className = "pill " + (exerciseValue ? "active" : "inactive");
+    document.getElementById("pill-no").className  = "pill " + (exerciseValue ? "inactive" : "active");
+  }
+
+  // ── Error ─────────────────────────────────────────────────────────────────
+  function showError(msg) {
+    const el = document.getElementById("error-msg");
+    el.textContent   = msg;
+    el.style.display = "block";
+    setFrameHeight();
+  }
+
+  function clearError() {
+    document.getElementById("error-msg").style.display = "none";
+  }
+
+  // ── Save ──────────────────────────────────────────────────────────────────
+  function onSave() {
+    if (selectedDate > todayISO()) {
+      showError("Date cannot be in the future.");
+      return;
+    }
+    if (existingDates.includes(selectedDate)) {
+      showError(`Entry for ${selectedDate} already exists.`);
+      return;
+    }
+    const btn = document.getElementById("save-btn");
+    btn.disabled    = true;
+    btn.textContent = "Saving…";
+    setComponentValue({ weight: weightValue, food: foodValue, exercise: exerciseValue, date: selectedDate });
+  }
+
+</script>
+</body>
+</html>

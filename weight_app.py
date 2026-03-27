@@ -1,13 +1,25 @@
+import datetime
 import pandas as pd
 import streamlit as st
 from utils.weight_analysis import wana, read_csv_from_drive
+from components.log_form import log_form
 
-st.set_page_config(page_title='Weight Control', layout="wide")
-st.title('Weight Control')
+st.set_page_config(page_title='Weight Control', layout="centered")
 
 st.markdown("""
-This app helps users track, analyze, and forecast their weight data while providing insights and visualizations based on user inputs.
-""")
+<style>
+/* Reduce top padding */
+.block-container { padding-top: 1.5rem !important; }
+/* Hide Streamlit chrome on mobile */
+@media (max-width: 768px) {
+  #MainMenu, footer, header { visibility: hidden; }
+}
+/* Tab bar: bigger touch targets */
+.stTabs [data-baseweb="tab"] { padding: 10px 16px; font-size: 15px; }
+</style>
+""", unsafe_allow_html=True)
+
+st.title('Weight Control')
 
 FILE_ID = '1P3JHnDkMMWf_xeGBaTHdEcAoYzTMIvU4'
 
@@ -22,64 +34,78 @@ raw_df = read_csv_from_drive(FILE_ID)
 measurement = st.session_state.get('measurement', 'lbs')
 analysis = wana(FILE_ID, raw_df, measurement=measurement)
 
-tab1, tab2, tab3, tab4 = st.tabs(['Summary', 'Data Input', 'Forecast', 'View Data'])
-
-with tab1:
-    st.subheader('Weight Evolution')
-    st.caption('Your weight trends, food & exercise averages, and volatility over time.')
-    fig = analysis.plot()
-    st.pyplot(fig)
+tab1, tab2, tab3, tab4 = st.tabs(['Log', 'Analysis', 'Forecast', 'Data'])
 
 @st.fragment
 def input_tab():
+    # Defaults from last entry
+    last_weight_lbs = float(analysis.last_weight)
+    if analysis.measurement == 'kgs':
+        last_weight = round(last_weight_lbs * 0.453592, 2)
+        step = 0.1
+    else:
+        last_weight = round(last_weight_lbs, 1)
+        step = 0.2
+
+    last_food     = int(analysis.df['food'].iloc[-1]) if not analysis.df.empty else 5
+    last_exercise = bool(analysis.df['exer'].iloc[-1]) if not analysis.df.empty else False
+    existing_dates = analysis.df.index.strftime("%Y-%m-%d").tolist()
+
     missing = analysis.find_missing()
     if len(missing) > 0:
-        col, _ = st.columns([0.2, 0.8])
-        with col:
-            st.warning(f"{len(missing)} missing date(s)")
-            with st.expander("Show missing dates"):
-                for m in missing:
-                    st.markdown(f"- {m.date()}")
+        with st.expander(f"⚠️ {len(missing)} missing date(s)"):
+            for m in missing:
+                st.markdown(f"- {m.date()}")
     else:
-        col, _ = st.columns([0.2, 0.8])
-        with col:
-            st.success("No missing dates.")
-    col1, col2, col3, col4 = st.columns([1, 1.5, 1.5, 4])
-    with col1:
-        date = st.date_input("Select Date", value=analysis.today, key='date_input')
-    with col2:
-        weight = st.number_input("Enter your weight (lbs)", value=analysis.last_weight, min_value=0.0, step=0.2, key='weight_input')
-    with col3:
-        food_score = st.number_input("Enter your food score", value=5, min_value=1, step=1, key='food_input')
-    exercise = st.checkbox("Did you exercise yesterday?", key='exercise_input')
-    if st.button("Update table"):
-        if pd.Timestamp(st.session_state.date_input) > pd.Timestamp('today').normalize():
-            st.error("Date cannot be in the future.")
+        st.success("No missing dates.", icon="✅")
+
+    result = log_form(
+        last_weight=last_weight,
+        last_food=last_food,
+        last_exercise=last_exercise,
+        unit=analysis.measurement,
+        step=step,
+        existing_dates=existing_dates,
+        key="log_form",
+        height=440,
+    )
+
+    if result is not None:
+        entry_date = datetime.date.fromisoformat(result["date"])
+        weight_received = float(result["weight"])
+        # convert to lbs if user is in kgs
+        if analysis.measurement == 'kgs':
+            weight_lbs = round(weight_received / 0.453592, 1)
         else:
-            result = analysis.update_data(
-                st.session_state.date_input,
-                st.session_state.weight_input,
-                st.session_state.food_input,
-                st.session_state.exercise_input
-            )
-            if result == "Table Updated":
-                st.toast("Data saved!")
-                read_csv_from_drive.clear()
-                st.rerun(scope="app")
-            else:
-                st.error(result)
+            weight_lbs = weight_received
+
+        update_result = analysis.update_data(
+            entry_date,
+            weight_lbs,
+            int(result["food"]),
+            bool(result["exercise"]),
+        )
+        if update_result == "Table Updated":
+            read_csv_from_drive.clear()
+            st.toast("Saved!", icon="✅")
+            st.rerun(scope="app")
+        else:
+            st.error(update_result)
+
+with tab1:
+    input_tab()
 
 with tab2:
-    st.subheader('Input Data')
-    input_tab()
+    st.subheader('Weight Evolution')
+    st.caption('Your weight trends, food & exercise averages, and volatility over time.')
+    fig = analysis.plot()
+    st.pyplot(fig, use_container_width=True)
 
 @st.fragment
 def forecast_tab():
-    col1, _ = st.columns([1, 8])
-    with col1:
-        weeks = st.number_input("Weeks?", min_value=1, max_value=10, value=2, step=1, key="week_input")
+    weeks = st.number_input("Weeks?", min_value=1, max_value=10, value=2, step=1, key="week_input")
     plot = analysis.forecast_graph(weeks)
-    st.pyplot(plot)
+    st.pyplot(plot, use_container_width=True)
 
 with tab3:
     forecast_tab()
@@ -87,8 +113,6 @@ with tab3:
 with tab4:
     st.subheader('Last Inputs')
     st.caption('Recent entries — select how many days to display.')
-    col1, col2 = st.columns([1, 4])
-    with col1:
-        n = st.slider("How many days?", min_value=5, max_value=100, value=20, step=5, key="last_n_slider")
+    n = st.slider("How many days?", min_value=5, max_value=100, value=20, step=5, key="last_n_slider")
     last = analysis.last_n(n=n)
-    st.dataframe(last)
+    st.dataframe(last, use_container_width=True)
