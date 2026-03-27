@@ -74,7 +74,7 @@ class wana:
             df[col] = scaler.fit_transform(df[col].values.reshape(-1, 1))
         df['food_exercise_avg_7d'] = 0.7*df['food_avg_7d'] + 0.3*df['exer_avg_7d']
         self.df = df
-        self.today = pd.Timestamp('today')
+        self.today = pd.Timestamp.now(tz='America/New_York').normalize().tz_localize(None)
         self.last_weight = df['weight_lbs'].iloc[-1]
     
     def last_n(self, n):
