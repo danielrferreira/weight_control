@@ -24,8 +24,6 @@ st.title('Weight Control')
 FILE_ID = '1P3JHnDkMMWf_xeGBaTHdEcAoYzTMIvU4'
 
 with st.sidebar:
-    st.markdown("### Settings")
-    st.radio("Unit", options=['lbs', 'kgs'], key='measurement')
     if st.button('Refresh Data'):
         read_csv_from_drive.clear()
         st.rerun()
@@ -34,18 +32,14 @@ raw_df = read_csv_from_drive(FILE_ID)
 measurement = st.session_state.get('measurement', 'lbs')
 analysis = wana(FILE_ID, raw_df, measurement=measurement)
 
+st.segmented_control("Unit", options=['lbs', 'kgs'], key='measurement', default='lbs')
+
 tab1, tab2, tab3, tab4 = st.tabs(['Log', 'Analysis', 'Forecast', 'Data'])
 
 @st.fragment
 def input_tab():
-    # Defaults from last entry
-    last_weight_lbs = float(analysis.last_weight)
-    if analysis.measurement == 'kgs':
-        last_weight = round(last_weight_lbs * 0.453592, 2)
-        step = 0.1
-    else:
-        last_weight = round(last_weight_lbs, 1)
-        step = 0.2
+    # Log tab always uses lbs
+    last_weight = round(float(analysis.last_weight), 1)
 
     last_food     = int(analysis.df['food'].iloc[-1]) if not analysis.df.empty else 5
     last_exercise = bool(analysis.df['exer'].iloc[-1]) if not analysis.df.empty else False
@@ -63,8 +57,8 @@ def input_tab():
         last_weight=last_weight,
         last_food=last_food,
         last_exercise=last_exercise,
-        unit=analysis.measurement,
-        step=step,
+        unit='lbs',
+        step=0.2,
         existing_dates=existing_dates,
         key="log_form",
         height=440,
@@ -72,12 +66,7 @@ def input_tab():
 
     if result is not None:
         entry_date = datetime.date.fromisoformat(result["date"])
-        weight_received = float(result["weight"])
-        # convert to lbs if user is in kgs
-        if analysis.measurement == 'kgs':
-            weight_lbs = round(weight_received / 0.453592, 1)
-        else:
-            weight_lbs = weight_received
+        weight_lbs = float(result["weight"])
 
         update_result = analysis.update_data(
             entry_date,
