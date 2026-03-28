@@ -29,6 +29,9 @@ with st.sidebar:
         st.rerun()
 
 raw_df = read_csv_from_drive(FILE_ID)
+if raw_df is None:
+    st.error("Could not load data from Google Drive. Check your connection and credentials.")
+    st.stop()
 measurement = st.session_state.get('measurement', 'lbs')
 analysis = wana(FILE_ID, raw_df, measurement=measurement)
 

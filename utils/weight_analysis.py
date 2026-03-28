@@ -33,16 +33,19 @@ def get_drive_service():
 
 @st.cache_data(ttl=300)
 def read_csv_from_drive(file_id):
-    request = get_drive_service().files().get_media(fileId=file_id)
-    fh = io.BytesIO()
-    downloader = MediaIoBaseDownload(fh, request)
+    try:
+        request = get_drive_service().files().get_media(fileId=file_id)
+        fh = io.BytesIO()
+        downloader = MediaIoBaseDownload(fh, request)
 
-    done = False
-    while not done:
-        status, done = downloader.next_chunk()
+        done = False
+        while not done:
+            status, done = downloader.next_chunk()
 
-    fh.seek(0)
-    return pd.read_csv(fh)
+        fh.seek(0)
+        return pd.read_csv(fh)
+    except Exception as e:
+        return None
 
 class wana:
     def __init__(self, file_id, raw_df, measurement='lbs', param='forecast_model/model_parameters_reg_prod.json'):
@@ -145,7 +148,10 @@ class wana:
         buffer.seek(0)
 
         media = MediaIoBaseUpload(io.BytesIO(buffer.getvalue().encode()), mimetype='text/csv')
-        get_drive_service().files().update(fileId=self.file_id, media_body=media).execute()
+        try:
+            get_drive_service().files().update(fileId=self.file_id, media_body=media).execute()
+        except Exception as e:
+            return f"Failed to save data to Drive: {type(e).__name__}"
         self.raw_df = df
         return "Table Updated"
     
