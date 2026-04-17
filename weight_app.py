@@ -79,6 +79,7 @@ def input_tab():
         )
         if update_result == "Table Updated":
             read_csv_from_drive.clear()
+            del st.session_state["log_form"]
             st.toast("Saved!", icon="✅")
             st.rerun(scope="app")
         else:
