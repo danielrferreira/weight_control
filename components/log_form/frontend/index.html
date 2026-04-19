@@ -292,6 +292,14 @@
       updateFoodDisplay();
       updateExerciseDisplay();
       initDatePicker();
+    } else {
+      // Streamlit re-rendered us (e.g. after a successful save).
+      // Sync existing_dates so we can detect duplicates, and reset the save button.
+      existingDates = args.existing_dates ?? existingDates;
+      const btn = document.getElementById("save-btn");
+      btn.disabled    = false;
+      btn.textContent = "Save Entry";
+      clearError();
     }
 
     setFrameHeight();
