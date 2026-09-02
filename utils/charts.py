@@ -13,11 +13,18 @@ import pandas as pd
 import plotly.graph_objects as go
 
 # -- surfaces -----------------------------------------------------------------
-PAPER_BG = '#0E1117'   # app background
-PLOT_BG  = '#1C2231'   # chart surface
-GRID     = '#2A3347'
-INK      = '#FAFAFA'
-INK_MUTE = '#9AA5B8'
+# Transparent, so charts sit on whatever background the page has. Streamlit's
+# Appearance setting is per-browser and overrides config.toml, and this version
+# gives the server no way to read it, so nothing here may assume a theme.
+PAPER_BG = 'rgba(0,0,0,0)'
+PLOT_BG  = 'rgba(0,0,0,0)'
+GRID     = 'rgba(127,135,150,0.28)'
+# Fallback ink: mid-tones legible on white and on #0E1117 alike. The app also
+# injects CSS making Plotly's title/tick/legend text follow the theme colour.
+INK      = '#77839A'
+INK_MUTE = '#7E8A9E'
+HOVER_BG = '#1B2230'
+HOVER_INK = '#F2F5FA'
 
 # -- data series --------------------------------------------------------------
 _PALETTE = {
@@ -27,24 +34,31 @@ _PALETTE = {
     'exercise':    '#C44E52',  # muted crimson — exercise avg
     'combined':    '#8567C4',  # violet        — food+exercise combined
     'std':         '#3E9DC4',  # sky blue      — std deviation
-    # forecast reads as a diverging scale: pessimistic <- expected -> optimistic
-    'fc_expected': '#B0BEC5',  # light slate   — neutral midpoint (most prominent on dark)
+    # Forecast: pessimistic <- expected -> optimistic. "Expected" is the current
+    # trend continued, so it carries the 7-day average's own colour and is set
+    # apart by being dashed — solid = measured, dashed = projected. A neutral
+    # grey midpoint was tried and rejected: every grey that clears contrast on
+    # both white and near-black lands within ΔE 15 of either the orange or the
+    # violet under normal vision.
+    'fc_expected': '#D2743F',  # same as avg_7d, dashed — the trend continued
     'fc_bad':      '#BE2F4A',  # red pole      — pessimistic
     'fc_good':     '#8567C4',  # violet pole   — optimistic
 }
 
 # -- reference marks (recessive, never data hues) -----------------------------
-REFERENCE  = '#8A94A6'   # personal-min line
-GOAL_FILL  = 'rgba(200, 230, 201, 0.13)'   # goal band
-GOAL_EDGE  = 'rgba(200, 230, 201, 0.35)'
-BAND_FILL  = 'rgba(138, 148, 166, 0.16)'   # imputed / travel periods
-BAND_TEXT  = '#A8B2C4'
+REFERENCE  = '#6E7A8C'   # personal-min line — reads on white and on dark
+GOAL_FILL  = 'rgba(85, 168, 104, 0.15)'    # goal band
+GOAL_EDGE  = '#4E9668'
+BAND_FILL  = 'rgba(127, 135, 150, 0.20)'   # imputed / travel periods
+BAND_TEXT  = '#6E7A8C'
 
 # -- periods where weight was imputed rather than measured --------------------
 # (start, end, label) — inclusive. Add a line per trip.
 IMPUTED_PERIODS = [
     ('2025-08-01', '2025-08-31', 'Brazil'),
-    ('2026-08-01', '2026-08-31', 'Brazil'),
+    # starts 07-31, not 08-01: that day's weight was imputed with the rest of
+    # the block, so it must not count as real evidence in the goals tab.
+    ('2026-07-31', '2026-08-31', 'Brazil'),
 ]
 
 # Range presets for the filter row above the charts.
@@ -118,8 +132,8 @@ def _base_layout(fig, title, height, show_legend, legend_rows=1):
         legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='left', x=0,
                     font=dict(size=11, color=INK_MUTE), bgcolor='rgba(0,0,0,0)',
                     itemsizing='constant'),
-        hoverlabel=dict(bgcolor='#141A26', bordercolor=GRID,
-                        font=dict(color=INK, size=12)),
+        hoverlabel=dict(bgcolor=HOVER_BG, bordercolor=GRID,
+                        font=dict(color=HOVER_INK, size=12)),
     )
     fig.update_xaxes(gridcolor=GRID, zeroline=False, showline=False,
                      tickfont=dict(size=11, color=INK_MUTE),
@@ -183,7 +197,7 @@ def build_analysis_figures(df, weight_col, measurement, weight_goal,
           _PALETTE['weight'], width=1.5, opacity=0.65)
     if mask.any():
         _line(f1, df.index, raw_imputed, 'Weight (imputed)',
-              _PALETTE['weight'], width=1.5, dash='dot', opacity=0.4)
+              _PALETTE['weight'], width=1.5, dash='dot', opacity=0.6)
     _line(f1, df.index, df[f'{weight_col}_avg_7d'], '7-day avg', _PALETTE['avg_7d'], width=2.5)
     _add_imputed_bands(f1, df)
     _base_layout(f1, f'Weight Trends ({measurement})', height, True)
@@ -262,4 +276,66 @@ def build_forecast_figure(df, interpolated_df, weight_col, measurement,
     _base_layout(fig, f'Weight Forecast ({measurement})', height, True, legend_rows=2)
     fig.update_xaxes(range=[df.index.max() - pd.Timedelta(days=90),
                             future_date + pd.Timedelta(days=10)])
+    return fig
+
+
+# -- ghost race ---------------------------------------------------------------
+GHOST_COLOR = '#5B8FCC'   # last year's run — validated against avg_7d orange
+
+
+def build_ghost_race_figure(this_year, last_year, milestones, measurement,
+                            inflated_days=0, zone=None, height=340):
+    """Race this year's post-Brazil recovery against last year's.
+
+    Both series are indexed by days since leaving Brazil. `inflated_days` marks
+    the opening stretch where this year's average still contains imputed days,
+    so an early lead is not mistaken for real progress.
+    """
+    conv = (lambda v: v * 0.453592) if measurement == 'kgs' else (lambda v: v)
+    fig = go.Figure()
+
+    if zone is not None:
+        low, high = zone
+        fig.add_hrect(y0=conv(low), y1=conv(high), fillcolor=GOAL_FILL,
+                      line_width=0, layer='below',
+                      annotation_text='hold zone', annotation_position='bottom left',
+                      annotation_font=dict(size=10, color=GOAL_EDGE))
+
+    for m in milestones:
+        fig.add_hline(y=conv(m.lbs), line=dict(color=REFERENCE, width=1, dash='dot'),
+                      annotation_text=m.label, annotation_position='top right',
+                      annotation_font=dict(size=9, color=REFERENCE))
+
+    if inflated_days > 0:
+        fig.add_vrect(x0=0, x1=inflated_days, fillcolor=BAND_FILL, line_width=0,
+                      layer='below', annotation_text='imputed still in window',
+                      annotation_position='top left',
+                      annotation_font=dict(size=10, color=BAND_TEXT))
+
+    if len(last_year):
+        fig.add_trace(go.Scatter(
+            x=last_year.index, y=[conv(v) for v in last_year.to_numpy()],
+            name='Last year', mode='lines',
+            line=dict(color=GHOST_COLOR, width=2, dash='dash'),
+            hovertemplate='Last year: <b>%{y:.1f}</b><extra></extra>'))
+    if len(this_year):
+        fig.add_trace(go.Scatter(
+            x=this_year.index, y=[conv(v) for v in this_year.to_numpy()],
+            name='You, now', mode='lines+markers',
+            line=dict(color=_PALETTE['avg_7d'], width=3),
+            marker=dict(size=6),
+            hovertemplate='You: <b>%{y:.1f}</b><extra></extra>'))
+
+    _base_layout(fig, f'The Ghost of Last Year ({measurement})', height, True)
+    fig.update_xaxes(title=dict(text='days since leaving Brazil',
+                                font=dict(size=11, color=INK_MUTE)))
+    # keep the destination in frame: the zone is the point of the chart
+    lows = [conv(zone[0])] if zone is not None else []
+    for s_ in (this_year, last_year):
+        if len(s_):
+            lows.append(conv(float(s_.min())))
+    highs = [conv(float(s_.max())) for s_ in (this_year, last_year) if len(s_)]
+    if lows and highs:
+        pad = max((max(highs) - min(lows)) * 0.06, 0.3)
+        fig.update_yaxes(range=[min(lows) - pad, max(highs) + pad])
     return fig

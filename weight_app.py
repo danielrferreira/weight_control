@@ -2,7 +2,8 @@ import datetime
 import pandas as pd
 import streamlit as st
 from utils.weight_analysis import wana, read_csv_from_drive
-from utils import charts
+from utils import charts, goals
+from components.progress_panel import panel_html
 from components.log_form import log_form
 
 st.set_page_config(page_title='Weight Control', layout="centered")
@@ -17,6 +18,18 @@ st.markdown("""
 }
 /* Tab bar: bigger touch targets */
 .stTabs [data-baseweb="tab"] { padding: 10px 16px; font-size: 15px; }
+/* Plotly draws text with baked-in fills. The server cannot read the browser's
+   Appearance setting, so let the chart chrome inherit the page text colour and
+   render correctly in light and dark alike. Annotations keep their own colours. */
+.stPlotlyChart .gtitle,
+.stPlotlyChart .xtitle,
+.stPlotlyChart .ytitle,
+.stPlotlyChart .xtick text,
+.stPlotlyChart .ytick text,
+.stPlotlyChart .legendtext { fill: currentColor !important; }
+.stPlotlyChart .xtick text,
+.stPlotlyChart .ytick text,
+.stPlotlyChart .legendtext { opacity: .70; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -38,7 +51,7 @@ analysis = wana(FILE_ID, raw_df, measurement=measurement)
 
 st.segmented_control("Unit", options=['lbs', 'kgs'], key='measurement', default='lbs')
 
-tab1, tab2, tab3, tab4 = st.tabs(['Log', 'Analysis', 'Forecast', 'Data'])
+tab1, tab_goals, tab2, tab3, tab4 = st.tabs(['Log', 'Goals', 'Analysis', 'Forecast', 'Data'])
 
 @st.fragment
 def input_tab():
@@ -100,6 +113,71 @@ def analysis_tab():
     ) or charts.DEFAULT_RANGE
     for fig in analysis.plot(range_key):
         st.plotly_chart(fig, use_container_width=True, config=charts.PLOTLY_CONFIG)
+
+
+@st.fragment
+def goals_tab():
+    df = analysis.df
+    mask = charts.imputed_mask(df.index)
+    status = goals.milestone_status(df, mask, measurement)
+    current = goals.current_average(df)
+    nxt = goals.next_milestone(status)
+    this_year, last_year = goals.ghost_race(df)
+    pace = goals.ghost_pace(last_year)
+    zone = goals.zone_status(current)
+    lo, hi = goals.zone_bounds(measurement)
+
+    # -- hero: the next target, never the far one ---------------------------
+    if nxt is None:
+        if zone == 'in':
+            st.success(f"In the zone at {goals.to_display(current, measurement):.1f} "
+                       f"{measurement}. Goal reached — now hold it between {lo:.1f} and {hi:.1f}.",
+                       icon="🎯")
+        elif zone == 'below':
+            st.info(f"Below the zone at {goals.to_display(current, measurement):.1f} "
+                    f"{measurement}. Ease back up into {lo:.1f}–{hi:.1f}.", icon="⬆️")
+        else:
+            st.success("Every milestone reached.", icon="🏁")
+    else:
+        gap = goals.to_display(nxt['remaining_lbs'], measurement)
+        st.markdown(f"### {gap:.1f} {measurement} to {nxt['label']}")
+        cap = f"next target {nxt['target_display']}"
+        when = goals.eta(nxt['remaining_lbs'], pace)
+        if when:
+            cap += f" · around {when:%b %d} at last year's pace"
+        st.caption(cap)
+
+    # -- one HTML block: stats, bar, milestones -----------------------------
+    cmp_ = goals.ghost_comparison(this_year, last_year)
+    delta = goals.to_display(current - goals.CAMPAIGN_START_LBS, measurement)
+    stats = [(f"7-day avg ({measurement})",
+              f"{goals.to_display(current, measurement):.1f}", f"{delta:+.1f} since day 0")]
+    if cmp_:
+        stats.append(("Day", f"{cmp_['day']}", "since Brazil"))
+        stats.append(("vs last year",
+                      f"{goals.to_display(cmp_['delta'], measurement):+.1f}",
+                      "ahead" if cmp_['delta'] > 0 else "behind"))
+    best_lbs, _ = goals.personal_best(df)
+    st.markdown(
+        panel_html(status, goals.overall_progress(df), current, best_lbs,
+                   measurement, zone, stats),
+        unsafe_allow_html=True)
+
+    # -- the ghost race -----------------------------------------------------
+    if len(last_year) > 1:
+        st.caption(f"Last year you left Brazil at "
+                   f"{goals.to_display(last_year.iloc[0], measurement):.1f} {measurement} and reached "
+                   f"{goals.to_display(last_year.min(), measurement):.1f} in {int(last_year.idxmin())} days"
+                   f" — {abs(goals.to_display(pace, measurement)):.2f} {measurement}/week off the same "
+                   f"trip. That is the pace to beat.")
+    # days 0-7 still carry imputed values inside the 7-day window
+    fig = charts.build_ghost_race_figure(this_year, last_year, goals.MILESTONES,
+                                         measurement, inflated_days=7,
+                                         zone=(goals.ZONE_LOW_LBS, goals.ZONE_HIGH_LBS))
+    st.plotly_chart(fig, use_container_width=True, config=charts.PLOTLY_CONFIG)
+
+with tab_goals:
+    goals_tab()
 
 with tab2:
     analysis_tab()
