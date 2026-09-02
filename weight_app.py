@@ -2,6 +2,7 @@ import datetime
 import pandas as pd
 import streamlit as st
 from utils.weight_analysis import wana, read_csv_from_drive
+from utils import charts
 from components.log_form import log_form
 
 st.set_page_config(page_title='Weight Control', layout="centered")
@@ -88,17 +89,26 @@ def input_tab():
 with tab1:
     input_tab()
 
-with tab2:
+@st.fragment
+def analysis_tab():
     st.subheader('Weight Evolution')
     st.caption('Your weight trends, food & exercise averages, and volatility over time.')
-    fig = analysis.plot()
-    st.pyplot(fig, use_container_width=True)
+    # Filters live in one row above everything they scope.
+    range_key = st.segmented_control(
+        'Range', options=list(charts.RANGE_OPTIONS.keys()),
+        default=charts.DEFAULT_RANGE, key='analysis_range',
+    ) or charts.DEFAULT_RANGE
+    for fig in analysis.plot(range_key):
+        st.plotly_chart(fig, use_container_width=True, config=charts.PLOTLY_CONFIG)
+
+with tab2:
+    analysis_tab()
 
 @st.fragment
 def forecast_tab():
     weeks = st.number_input("Weeks?", min_value=1, max_value=10, value=2, step=1, key="week_input")
     plot = analysis.forecast_graph(weeks)
-    st.pyplot(plot, use_container_width=True)
+    st.plotly_chart(plot, use_container_width=True, config=charts.PLOTLY_CONFIG)
 
 with tab3:
     forecast_tab()
