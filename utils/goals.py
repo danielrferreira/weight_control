@@ -46,7 +46,11 @@ MILESTONES = [
               'your highest real 7-day average, set 2025-01-17', 160.4),
     Milestone('pre_brazil', 'Pre-Brazil',
               'your 7-day average the day before you flew out', 157.3),
+    Milestone('summer_start', 'Summer start',
+              'where you were when summer 2025 began', 70.7 * LBS_PER_KG),
     Milestone('kg70', '70 kg', None, 70 * LBS_PER_KG),
+    Milestone('autumn_2025', 'Autumn 2025',
+              'where you were in autumn 2025', 69 * LBS_PER_KG),
     Milestone('kg68', '68 kg', None, 68 * LBS_PER_KG),
 ]
 

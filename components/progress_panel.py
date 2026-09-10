@@ -36,7 +36,7 @@ _CSS = f"""
 .pp-stat .s {{ font-size: 10px; opacity: .62; }}
 
 .pp-rail {{ position: relative; height: 14px; border-radius: 7px;
-            background: {NEUTRAL}; margin: 34px 0 0; }}
+            background: {NEUTRAL}; margin: 50px 0 0; }}
 .pp-fill {{ position: absolute; left: 0; top: 0; bottom: 0; border-radius: 7px;
             background: linear-gradient(90deg, {FILL_FROM}, {FILL_TO}); }}
 .pp-zone {{ position: absolute; top: 0; bottom: 0; border-radius: 7px;
@@ -49,7 +49,10 @@ _CSS = f"""
             box-shadow: 0 0 0 3px {RING}; }}
 .pp-lab  {{ position: absolute; font-size: 10px; opacity: .62;
             white-space: nowrap; }}
+/* two rows above the rail: milestones sit close enough that a single row
+   of labels collides on a phone, so they alternate between the two. */
 .pp-above {{ bottom: 24px; }}
+.pp-above2 {{ bottom: 38px; }}
 .pp-below {{ top: 24px; }}
 .pp-ends {{ display: flex; justify-content: space-between; font-size: 11px;
             opacity: .62; margin-top: 40px; }}
@@ -87,13 +90,14 @@ def _stats(items):
 
 def _bar(status, progress, current_lbs, best_lbs, measurement):
     ticks = []
-    for s in status:
+    for i, s in enumerate(status):
         pct = goals.position_pct(s['target_lbs'])
         colour = FILL_FROM if s['reached'] else TICK
+        row = 'pp-above' if i % 2 == 0 else 'pp-above2'
         ticks.append(
             f'<div class="pp-tick" style="left:{pct * 100:.2f}%;margin-left:-1px;'
             f'background:{colour}"></div>'
-            f'<div class="pp-lab pp-above" style="left:{pct * 100:.2f}%;'
+            f'<div class="pp-lab {row}" style="left:{pct * 100:.2f}%;'
             f'transform:{_edge_shift(pct)}">{s["milestone"].display(measurement)}</div>')
 
     z0 = goals.position_pct(goals.ZONE_HIGH_LBS)
