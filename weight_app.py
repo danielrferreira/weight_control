@@ -128,7 +128,8 @@ def goals_tab():
     lo, hi = goals.zone_bounds(measurement)
 
     # -- hero: the next target, never the far one ---------------------------
-    if nxt is None:
+    # keep chasing until 67 kg has been touched; after that, in the zone == hold
+    if nxt is None or (zone != 'above' and goals.hold_unlocked(df)):
         if zone == 'in':
             st.success(f"In the zone at {goals.to_display(current, measurement):.1f} "
                        f"{measurement}. Goal reached — now hold it between {lo:.1f} and {hi:.1f}.",

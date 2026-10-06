@@ -26,6 +26,11 @@ CAMPAIGN_START_LBS = 161.4
 
 GHOST_HORIZON_DAYS = 100
 
+# Last year's run, as 7-day averages: the day-0 peak and the trough it reached
+# on 2025-10-23, which is still the lowest 7-day average on record.
+GHOST_PEAK_LBS = 157.9
+ALL_TIME_BEST_LBS = 150.686         # 3 decimals so kg rounds like the bar's "best"
+
 
 class Milestone:
     __slots__ = ('key', 'label', 'note', 'lbs')
@@ -48,10 +53,22 @@ MILESTONES = [
               'your 7-day average the day before you flew out', 157.3),
     Milestone('summer_start', 'Summer start',
               'where you were when summer 2025 began', 70.7 * LBS_PER_KG),
-    Milestone('kg70', '70 kg', None, 70 * LBS_PER_KG),
+    # last year's whole drop, taken off this year's start: 161.4 - 7.2
+    Milestone('match_2025', "Match 2025's drop",
+              'the same 7.2 lbs you lost after Brazil 2025',
+              CAMPAIGN_START_LBS - (GHOST_PEAK_LBS - ALL_TIME_BEST_LBS)),
+    Milestone('winter_2026', 'Winter 2026',
+              'about where you held through winter 2025-26', 69.4 * LBS_PER_KG),
     Milestone('autumn_2025', 'Autumn 2025',
               'where you were in autumn 2025', 69 * LBS_PER_KG),
+    # A fixed mark, not the live minimum: tracking the live one would move it
+    # down with every new record, so it could never stay reached.
+    Milestone('all_time_best', 'All-time best',
+              'your lowest 7-day average ever, set 2025-10-23', ALL_TIME_BEST_LBS),
     Milestone('kg68', '68 kg', None, 68 * LBS_PER_KG),
+    # inside the hold zone, past the goal: something to aim at once 68 is done
+    Milestone('mid_optimal', 'Mid optimal range',
+              'the middle of the 66-68 kg hold zone', 67 * LBS_PER_KG),
 ]
 
 # 68 kg is the finish line. The bar deliberately runs on to 66 kg so there is
@@ -61,6 +78,7 @@ GOAL_LBS = 68 * LBS_PER_KG
 ZONE_HIGH_LBS = GOAL_LBS            # entering the zone == reaching the goal
 ZONE_LOW_LBS = 66 * LBS_PER_KG      # bottom of the zone, and end of the axis
 AXIS_END_LBS = ZONE_LOW_LBS
+HOLD_UNLOCK_LBS = 67 * LBS_PER_KG   # mid-zone: reaching it switches to "hold"
 
 # kept as the bar's right-hand end
 FINAL_LBS = AXIS_END_LBS
@@ -149,6 +167,16 @@ def zone_status(current_lbs):
     if current_lbs >= ZONE_LOW_LBS:
         return 'in'
     return 'below'
+
+
+def hold_unlocked(df):
+    """Whether this campaign has touched the middle of the zone (67 kg).
+
+    Until then the tab keeps pushing toward 67; after it, being anywhere in
+    the zone counts as holding, so drifting back to 67.5 is not a new chase.
+    """
+    seg = df.loc[df.index >= CAMPAIGN_START_DATE, 'weight_lbs_avg_7d'].dropna()
+    return bool(len(seg)) and float(seg.min()) <= HOLD_UNLOCK_LBS
 
 
 def zone_bounds(measurement):

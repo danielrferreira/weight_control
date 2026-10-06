@@ -284,7 +284,7 @@ GHOST_COLOR = '#5B8FCC'   # last year's run — validated against avg_7d orange
 
 
 def build_ghost_race_figure(this_year, last_year, milestones, measurement,
-                            inflated_days=0, zone=None, height=340):
+                            inflated_days=0, zone=None, height=400):
     """Race this year's post-Brazil recovery against last year's.
 
     Both series are indexed by days since leaving Brazil. `inflated_days` marks
